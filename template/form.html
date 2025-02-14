@@ -28,6 +28,10 @@
           {% if question.answer_type == 'text' %}
             <input type="text" class="form-control" name="question_{{ question.id }}" placeholder="Enter your answer">
 
+          {% elif question.answer_type == 'integer' %}
+          <input type="integer" class="form-control" name="question_{{ question.id }}" placeholder="Enter your answer">
+  
+
           {% elif question.answer_type == 'textarea' %}
             <textarea class="form-control" name="question_{{ question.id }}" rows="3" placeholder="Enter your answer"></textarea>
 

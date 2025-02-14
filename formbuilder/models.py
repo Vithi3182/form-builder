@@ -38,9 +38,16 @@ class Form(models.Model):
     title = models.CharField(max_length=255)
 
 class Question(models.Model):
+    ANSWER_TYPES = [
+        ('text', 'Short Answer'),
+        ('textarea', 'Paragraph'),
+        ('radio', 'Multiple Choice (Radio)'),
+        ('checkbox', 'Checkboxes'),
+        ('integer', 'Integer'),  
+    ]
     form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name='questions')
     question_text = models.CharField(max_length=500)
-    answer_type = models.CharField(max_length=20)
+    answer_type = models.CharField(max_length=20,choices=ANSWER_TYPES)
     answer_options = models.TextField(blank=True, default="")  # Comma-separated options
     main_question = models.ForeignKey("self", on_delete=models.SET_NULL, blank=True, null=True, related_name='hidden_questions')
     conditional_option = models.CharField(max_length=255, blank=True, null=True) 
