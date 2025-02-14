@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Form: {{ form.title }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+  <div class="container mt-5">
+    <h1>Edit Form: {{ form.title }}</h1>
+
+    <h3>Existing Questions</h3>
+    <ul id="question-list" class="list-group">
+      {% for question in questions %}
+      <li class="list-group-item">
+        <input type="text" class="form-control mb-2 question-text" value="{{ question.question_text }}" data-question-id="{{ question.id }}">
+        <select class="form-select mb-2 answer-type">
+          <option value="text" {% if question.answer_type == "text" %}selected{% endif %}>Short Answer</option>
+          <option value="textarea" {% if question.answer_type == "textarea" %}selected{% endif %}>Paragraph</option>
+          <option value="radio" {% if question.answer_type == "radio" %}selected{% endif %}>Multiple Choice (Radio)</option>
+          <option value="checkbox" {% if question.answer_type == "checkbox" %}selected{% endif %}>Checkboxes</option>
+        </select>
+
+        <div class="answer-options mt-2">
+          {% for option in question.options %}
+          <div class="input-group mb-2">
+            <input type="text" class="form-control answer-option-input" value="{{ option }}">
+            <button type="button" class="btn btn-danger remove-option-btn">Remove</button>
+          </div>
+          {% empty %}
+          <p class="text-muted">No answer options defined.</p>
+          {% endfor %}
+        </div>
+        <button type="button" class="btn btn-secondary add-option-btn mb-2">Add Option</button>
+
+        <select class="form-select mb-2 main-question-selector">
+          <option value="">No Main Question</option>
+          {% for main_question in questions %}
+            <option value="{{ main_question.id }}" {% if main_question.id == question.main_question_id %}selected{% endif %}>
+              Question {{ forloop.counter }}: {{ main_question.question_text }}
+            </option>
+          {% endfor %}
+        </select>
+
+        <label class="form-label mt-2">Conditional Option</label>
+        <input type="text" class="form-control mb-2 conditional-option" value="{{ question.conditional_option }}" placeholder="Enter the condition value for this question">
+
+        <button type="button" class="btn btn-primary update-question-btn mt-2" data-question-id="{{ question.id }}">Update</button>
+        <button type="button" class="btn btn-danger delete-question-btn" data-question-id="{{ question.id }}">Delete</button>
+      </li>
+      {% endfor %}
+    </ul>
+
+    <h3 class="mt-4">Add New Question</h3>
+    <input type="text" id="new-question-text" class="form-control mt-2" placeholder="Enter question">
+    <select id="new-answer-type" class="form-select mt-2">
+      <option value="text">Short Answer</option>
+      <option value="textarea">Paragraph</option>
+      <option value="radio">Multiple Choice (Radio)</option>
+      <option value="checkbox">Checkboxes</option>
+    </select>
+    
+    <div id="new-answer-options" class="mt-2"></div>
+    <button type="button" class="btn btn-secondary" id="new-add-option-btn">Add Option</button>
+    
+    <select id="new-main-question" class="form-select mt-2">
+      <option value="">No Main Question</option>
+      {% for main_question in questions %}
+        <option value="{{ main_question.id }}">Question {{ forloop.counter }}: {{ main_question.question_text }}</option>
+      {% endfor %}
+    </select>
+    
+    <label class="form-label mt-2">Conditional Option</label>
+    <input type="text" id="new-conditional-option" class="form-control" placeholder="Enter condition value">
+    
+    <button type="button" class="btn btn-success mt-3" id="add-new-question-btn">Add New Question</button>
+    <div id="message-box" class="alert alert-success mt-3 d-none">Question added successfully!</div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll('.add-option-btn, #new-add-option-btn').forEach(button => {
+        button.addEventListener('click', function () {
+          const optionsContainer = button.id === 'new-add-option-btn' ? document.getElementById('new-answer-options') : this.previousElementSibling;
+          const inputGroup = document.createElement('div');
+          inputGroup.classList.add('input-group', 'mb-2');
+
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.classList.add('form-control');
+          input.placeholder = 'Enter option text';
+
+          const removeBtn = document.createElement('button');
+          removeBtn.classList.add('btn', 'btn-danger');
+          removeBtn.textContent = 'Remove';
+          removeBtn.addEventListener('click', () => inputGroup.remove());
+
+          inputGroup.appendChild(input);
+          inputGroup.appendChild(removeBtn);
+          optionsContainer.appendChild(inputGroup);
+        });
+      });
+
+      document.getElementById('add-new-question-btn').addEventListener('click', function () {
+        const questionText = document.getElementById('new-question-text').value;
+        const answerType = document.getElementById('new-answer-type').value;
+        const mainQuestionId = document.getElementById('new-main-question').value;
+        const conditionalOption = document.getElementById('new-conditional-option').value;
+        
+        let answerOptions = [];
+        document.querySelectorAll('#new-answer-options input[type="text"]').forEach(input => {
+          answerOptions.push(input.value.trim());
+        });
+
+        if (!questionText) {
+          alert("Please enter a question.");
+          return;
+        }
+
+        fetch('', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          body: `action=add_question&question_text=${encodeURIComponent(questionText)}&answer_type=${encodeURIComponent(answerType)}&answer_options=${encodeURIComponent(answerOptions.join(','))}&main_question=${mainQuestionId}&conditional_option=${encodeURIComponent(conditionalOption)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            document.getElementById('message-box').classList.remove('d-none');
+            setTimeout(() => location.reload(), 1500);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

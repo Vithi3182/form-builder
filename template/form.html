@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ form.title }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+  <div class="container mt-5">
+    <h1 class="mb-4">{{ form.title }}</h1>
+
+    <form method="post">
+      {% csrf_token %}
+      
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" name="email" placeholder="Enter your email" required>
+      </div>
+
+      {% for question in questions %}
+        <div class="mb-3 question-container" id="question_{{ question.id }}" 
+             {% if question.main_question_id %}style="display: none;"{% endif %}
+             data-conditional-option="{{ question.conditional_option }}">
+
+          <label class="form-label">{{ forloop.counter }}. {{ question.question_text }}</label>
+
+          {% if question.answer_type == 'text' %}
+            <input type="text" class="form-control" name="question_{{ question.id }}" placeholder="Enter your answer">
+
+          {% elif question.answer_type == 'textarea' %}
+            <textarea class="form-control" name="question_{{ question.id }}" rows="3" placeholder="Enter your answer"></textarea>
+
+          {% elif question.answer_type == 'radio' %}
+            {% for option in question.options %}
+              <div class="form-check">
+                <input class="form-check-input parent-question" type="radio" 
+                       name="question_{{ question.id }}" id="option_{{ forloop.counter }}" 
+                       value="{{ option }}" 
+                       data-question-id="{{ question.id }}"
+                       data-target-questions="{% for child in questions %}{% if child.main_question_id == question.id %}{{ child.id }},{% endif %}{% endfor %}">
+                <label class="form-check-label" for="option_{{ forloop.counter }}">{{ option }}</label>
+              </div>
+            {% endfor %}
+
+          {% elif question.answer_type == 'checkbox' %}
+            {% for option in question.options %}
+              <div class="form-check">
+                <input class="form-check-input parent-question" type="checkbox" 
+                       name="question_{{ question.id }}" id="option_{{ forloop.counter }}" 
+                       value="{{ option }}" 
+                       data-question-id="{{ question.id }}"
+                       data-target-questions="{% for child in questions %}{% if child.main_question_id == question.id %}{{ child.id }},{% endif %}{% endfor %}">
+                <label class="form-check-label" for="option_{{ forloop.counter }}">{{ option }}</label>
+              </div>
+            {% endfor %}
+          {% endif %}
+        </div>
+      {% endfor %}
+      
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      console.log("Script Loaded - Adding Event Listeners to Parent Questions");
+
+      document.querySelectorAll('.parent-question').forEach(parent => {
+        parent.addEventListener('change', function () {
+          console.log("Parent Question Changed:", this.value);
+
+          const selectedValue = this.value;
+          const targetQuestions = this.getAttribute("data-target-questions").split(',');
+
+          targetQuestions.forEach(questionId => {
+            if (questionId) {
+              const childQuestion = document.getElementById(`question_${questionId}`);
+              
+              if (childQuestion) {
+                console.log(`Checking Child Question ${questionId}, Condition: ${childQuestion.dataset.conditionalOption}`);
+
+                // Show only if selected value matches the conditional option
+                if (selectedValue === childQuestion.dataset.conditionalOption) {
+                  childQuestion.style.display = "block";
+                } else {
+                  childQuestion.style.display = "none";
+                }
+              }
+            }
+          });
+        });
+      });
+    });
+  </script>
+</body>
+</html>
