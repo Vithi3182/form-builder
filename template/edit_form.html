@@ -15,13 +15,25 @@
       {% for question in questions %}
       <li class="list-group-item">
         <input type="text" class="form-control mb-2 question-text" value="{{ question.question_text }}" data-question-id="{{ question.id }}">
+
         <select class="form-select mb-2 answer-type">
           <option value="text" {% if question.answer_type == "text" %}selected{% endif %}>Short Answer</option>
           <option value="textarea" {% if question.answer_type == "textarea" %}selected{% endif %}>Paragraph</option>
           <option value="radio" {% if question.answer_type == "radio" %}selected{% endif %}>Multiple Choice (Radio)</option>
           <option value="checkbox" {% if question.answer_type == "checkbox" %}selected{% endif %}>Checkboxes</option>
           <option value="integer" {% if question.answer_type == "integer" %}selected{% endif %}>Integer</option>
+          <option value="calculated" {% if question.answer_type == "calculated" %}selected{% endif %}>Calculated Field</option>
         </select>
+
+        <!-- Calculation Type Dropdown (Only for Calculated Fields) -->
+        <div class="calculation-type mt-2" {% if question.answer_type != "calculated" %}style="display: none;"{% endif %}>
+          <label class="form-label">Calculation Type</label>
+          <select class="form-select calculation-method">
+            <option value="sum" {% if question.calculation_type == "sum" %}selected{% endif %}>Total</option>
+            <option value="average" {% if question.calculation_type == "average" %}selected{% endif %}>Average</option>
+            <option value="percentage" {% if question.calculation_type == "percentage" %}selected{% endif %}>Percentage</option>
+          </select>
+        </div>
 
         <div class="answer-options mt-2">
           {% for option in question.options %}
@@ -61,55 +73,60 @@
       <option value="radio">Multiple Choice (Radio)</option>
       <option value="checkbox">Checkboxes</option>
       <option value="integer">Integer</option>
+      <option value="calculated">Calculated Field</option>
     </select>
-    
+
+    <!-- New Calculation Type Dropdown (Hidden Initially) -->
+    <div id="new-calculation-type" class="mt-2" style="display: none;">
+      <label class="form-label">Calculation Type</label>
+      <select id="new-calculation-method" class="form-select">
+        <option value="sum">Total</option>
+        <option value="average">Average</option>
+        <option value="percentage">Percentage</option>
+      </select>
+    </div>
+
     <div id="new-answer-options" class="mt-2"></div>
     <button type="button" class="btn btn-secondary" id="new-add-option-btn">Add Option</button>
-    
+
     <select id="new-main-question" class="form-select mt-2">
       <option value="">No Main Question</option>
       {% for main_question in questions %}
         <option value="{{ main_question.id }}">Question {{ forloop.counter }}: {{ main_question.question_text }}</option>
       {% endfor %}
     </select>
-    
+
     <label class="form-label mt-2">Conditional Option</label>
     <input type="text" id="new-conditional-option" class="form-control" placeholder="Enter condition value">
-    
+
     <button type="button" class="btn btn-success mt-3" id="add-new-question-btn">Add New Question</button>
     <div id="message-box" class="alert alert-success mt-3 d-none">Question added successfully!</div>
   </div>
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-      document.querySelectorAll('.add-option-btn, #new-add-option-btn').forEach(button => {
-        button.addEventListener('click', function () {
-          const optionsContainer = button.id === 'new-add-option-btn' ? document.getElementById('new-answer-options') : this.previousElementSibling;
-          const inputGroup = document.createElement('div');
-          inputGroup.classList.add('input-group', 'mb-2');
-
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.classList.add('form-control');
-          input.placeholder = 'Enter option text';
-
-          const removeBtn = document.createElement('button');
-          removeBtn.classList.add('btn', 'btn-danger');
-          removeBtn.textContent = 'Remove';
-          removeBtn.addEventListener('click', () => inputGroup.remove());
-
-          inputGroup.appendChild(input);
-          inputGroup.appendChild(removeBtn);
-          optionsContainer.appendChild(inputGroup);
+      document.querySelectorAll('.answer-type').forEach(select => {
+        select.addEventListener('change', function () {
+          const calculationDiv = this.closest("li").querySelector(".calculation-type");
+          if (this.value === "calculated") {
+            calculationDiv.style.display = "block";
+          } else {
+            calculationDiv.style.display = "none";
+          }
         });
+      });
+
+      document.getElementById("new-answer-type").addEventListener("change", function () {
+        document.getElementById("new-calculation-type").style.display = this.value === "calculated" ? "block" : "none";
       });
 
       document.getElementById('add-new-question-btn').addEventListener('click', function () {
         const questionText = document.getElementById('new-question-text').value;
         const answerType = document.getElementById('new-answer-type').value;
+        const calculationMethod = document.getElementById('new-calculation-method').value;
         const mainQuestionId = document.getElementById('new-main-question').value;
         const conditionalOption = document.getElementById('new-conditional-option').value;
-        
+
         let answerOptions = [];
         document.querySelectorAll('#new-answer-options input[type="text"]').forEach(input => {
           answerOptions.push(input.value.trim());
@@ -126,7 +143,7 @@
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-CSRFToken': '{{ csrf_token }}'
           },
-          body: `action=add_question&question_text=${encodeURIComponent(questionText)}&answer_type=${encodeURIComponent(answerType)}&answer_options=${encodeURIComponent(answerOptions.join(','))}&main_question=${mainQuestionId}&conditional_option=${encodeURIComponent(conditionalOption)}`
+          body: `action=add_question&question_text=${encodeURIComponent(questionText)}&answer_type=${encodeURIComponent(answerType)}&answer_options=${encodeURIComponent(answerOptions.join(','))}&calculation_type=${encodeURIComponent(calculationMethod)}&main_question=${encodeURIComponent(mainQuestionId)}&conditional_option=${encodeURIComponent(conditionalOption)}`
         })
         .then(response => response.json())
         .then(data => {
@@ -136,66 +153,6 @@
           }
         });
       });
-      document.querySelectorAll('.update-question-btn').forEach(button => {
-        button.addEventListener('click', function () {
-          const questionId = this.getAttribute('data-question-id');
-          const questionText = this.parentNode.querySelector('.question-text').value;
-          const answerType = this.parentNode.querySelector('.answer-type').value;
-          const mainQuestionId = this.parentNode.querySelector('.main-question-selector').value;
-          const conditionalOption = this.parentNode.querySelector('.conditional-option').value;
-      
-          let answerOptions = [];
-          this.parentNode.querySelectorAll('.answer-options input[type="text"]').forEach(input => {
-            answerOptions.push(input.value.trim());
-          });
-      
-          console.log("Updating question:", questionId, "Options:", answerOptions);  // Debugging
-      
-          fetch('', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: `action=update_question&question_id=${questionId}&question_text=${encodeURIComponent(questionText)}&answer_type=${encodeURIComponent(answerType)}&answer_options=${encodeURIComponent(answerOptions.join(','))}&main_question=${mainQuestionId}&conditional_option=${encodeURIComponent(conditionalOption)}`
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'success') {
-              alert('Question updated successfully!');
-              location.reload();
-            }
-          })
-          .catch(error => console.error("Update Error:", error));  // Debugging
-        });
-      });
-      document.querySelectorAll('.delete-question-btn').forEach(button => {
-        button.addEventListener('click', function () {
-          const questionId = this.getAttribute('data-question-id');
-      
-          if (!confirm("Are you sure you want to delete this question?")) {
-            return;
-          }
-      
-          fetch('', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: `action=delete_question&question_id=${questionId}`
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'success') {
-              alert('Question deleted successfully!');
-              location.reload();
-            }
-          })
-          .catch(error => console.error("Delete Error:", error));  // Debugging
-        });
-      });
-      
     });
   </script>
 </body>

@@ -43,7 +43,13 @@ class Question(models.Model):
         ('textarea', 'Paragraph'),
         ('radio', 'Multiple Choice (Radio)'),
         ('checkbox', 'Checkboxes'),
-        ('integer', 'Integer'),  
+        ('integer', 'Integer'),
+        ('calculated', 'Calculated Field'),  
+    ]
+    CALCULATION_TYPES = [
+        ('sum', 'Total'),
+        ('average', 'Average'),
+        ('percentage', 'Percentage'),
     ]
     form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name='questions')
     question_text = models.CharField(max_length=500)
@@ -51,6 +57,7 @@ class Question(models.Model):
     answer_options = models.TextField(blank=True, default="")  # Comma-separated options
     main_question = models.ForeignKey("self", on_delete=models.SET_NULL, blank=True, null=True, related_name='hidden_questions')
     conditional_option = models.CharField(max_length=255, blank=True, null=True) 
+    calculation_type = models.CharField(max_length=20, choices=CALCULATION_TYPES, blank=True, null=True)
 
     def get_options(self):
         return self.answer_options.split(",") if self.answer_options else []

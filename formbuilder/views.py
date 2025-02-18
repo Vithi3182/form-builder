@@ -65,13 +65,16 @@ def form_builder_view(request):
             answer_type = request.POST.get("answer_type")
             answer_options = request.POST.get("answer_options", "")
             main_question_id = request.POST.get("main_question")
+            calculation_type = request.POST.get("calculation_type", "") 
 
             if question_text and answer_type:
                 question_data = {
                     "question_text": question_text,
                     "answer_type": answer_type,
                     "answer_options": answer_options if answer_type in ['radio', 'checkbox'] else "",
-                    "main_question": main_question_id
+                    "main_question": main_question_id,
+                    
+                    "calculation_type": calculation_type if answer_type == "calculated" else ""
                 }
 
                 # Append the question to the session list
@@ -207,6 +210,24 @@ def edit_form(request, form_id):
     if request.method == "POST":
         action = request.POST.get("action")
 
+        
+
+        if action == "add_question":
+            question_text = request.POST.get("question_text")
+            answer_type = request.POST.get("answer_type")
+            calculation_type = request.POST.get("calculation_type", "")
+
+            Question.objects.create(
+                form=form,
+                question_text=question_text,
+                answer_type=answer_type,
+                calculation_type=calculation_type if answer_type == "calculated" else None
+            )
+            return JsonResponse({"status": "success"})
+
+    
+
+
         if action == "update_question":
             question_id = request.POST.get("question_id")
             question_text = request.POST.get("question_text")
@@ -222,9 +243,11 @@ def edit_form(request, form_id):
             question = get_object_or_404(Question, id=question_id)
             question.question_text = question_text
             question.answer_type = answer_type
+            question.calculation_type = calculation_type if answer_type == "calculated" else ""
+    
             
             if answer_type in ['radio', 'checkbox']:
-                question.answer_options = answer_options  # ✅ Ensure options are stored
+                question.answer_options = answer_options  
             else:
                 question.answer_options = ""
 

@@ -26,14 +26,13 @@
           <label class="form-label">{{ forloop.counter }}. {{ question.question_text }}</label>
 
           {% if question.answer_type == 'text' %}
-            <input type="text" class="form-control" name="question_{{ question.id }}" placeholder="Enter your answer">
+            <input type="text" class="form-control input-field" name="question_{{ question.id }}" placeholder="Enter your answer">
 
           {% elif question.answer_type == 'integer' %}
-          <input type="integer" class="form-control" name="question_{{ question.id }}" placeholder="Enter your answer">
-  
+            <input type="number" class="form-control input-field" name="question_{{ question.id }}" placeholder="Enter your answer">
 
           {% elif question.answer_type == 'textarea' %}
-            <textarea class="form-control" name="question_{{ question.id }}" rows="3" placeholder="Enter your answer"></textarea>
+            <textarea class="form-control input-field" name="question_{{ question.id }}" rows="3" placeholder="Enter your answer"></textarea>
 
           {% elif question.answer_type == 'radio' %}
             {% for option in question.options %}
@@ -58,6 +57,13 @@
                 <label class="form-check-label" for="option_{{ forloop.counter }}">{{ option }}</label>
               </div>
             {% endfor %}
+
+          {% elif question.answer_type == 'calculated' %}
+            <input type="text" class="form-control calculated-field" 
+                   id="calculated_{{ question.id }}" 
+                   placeholder="{{ question.calculation_type|title }} (Read-Only)" 
+                   readonly 
+                   data-calculation-type="{{ question.calculation_type }}">
           {% endif %}
         </div>
       {% endfor %}
@@ -70,6 +76,7 @@
     document.addEventListener("DOMContentLoaded", function () {
       console.log("Script Loaded - Adding Event Listeners to Parent Questions");
 
+      // Handle Parent-Child Question Display Logic
       document.querySelectorAll('.parent-question').forEach(parent => {
         parent.addEventListener('change', function () {
           console.log("Parent Question Changed:", this.value);
@@ -94,6 +101,36 @@
             }
           });
         });
+      });
+
+      // Auto Calculation Logic for Total, Average, and Percentage
+      function calculateFields() {
+        let total = 0, count = 0;
+        let integerInputs = document.querySelectorAll('.input-field');
+
+        integerInputs.forEach(input => {
+          let value = parseFloat(input.value);
+          if (!isNaN(value)) {
+            total += value;
+            count++;
+          }
+        });
+
+        document.querySelectorAll('.calculated-field').forEach(field => {
+          let calculationType = field.dataset.calculationType;
+          if (calculationType === 'sum') {
+            field.value = total;
+          } else if (calculationType === 'average') {
+            field.value = count > 0 ? (total / count).toFixed(2) : 0;
+          } else if (calculationType === 'percentage') {
+            field.value = count > 0 ? ((total / (count * 100)) * 100).toFixed(2) + "%" : "0%";
+          }
+        });
+      }
+
+      // Attach event listener to all integer input fields to trigger calculation
+      document.querySelectorAll('.input-field').forEach(input => {
+        input.addEventListener('input', calculateFields);
       });
     });
   </script>
